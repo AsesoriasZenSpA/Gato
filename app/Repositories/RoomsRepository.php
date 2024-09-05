@@ -2,6 +2,8 @@
 
 namespace App\Repositories;
 
+use App\Events\Rooms\Join;
+use App\Events\Rooms\Leave;
 use App\Mail\Rooms\Invite;
 use App\Models\Room;
 use App\Models\User;
@@ -32,5 +34,15 @@ class RoomsRepository
     {
         return $room->token === $token
             && $room->guest_id === $user->id;
+    }
+
+    public static function joined(User $user, Room $room): void
+    {
+        broadcast(new Join($user, $room));
+    }
+
+    public static function leaves(User $user, Room $room): void
+    {
+        broadcast(new Leave($user, $room));
     }
 }

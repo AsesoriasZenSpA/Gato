@@ -2,11 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Events\Rooms\Join;
+use App\Events\Rooms\Leave;
 use App\Mail\Rooms\Invite;
 use App\Models\Room;
 use App\Models\User;
 use App\Repositories\RoomsRepository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
@@ -17,6 +20,7 @@ class RoomsTest extends TestCase
     public function test_flow(): void
     {
         Mail::fake();
+        Event::fake();
 
         $host = User::factory()->create();
         $guest = User::factory()->create();
@@ -38,5 +42,23 @@ class RoomsTest extends TestCase
 
         $this->assertTrue(RoomsRepository::verify($guest, $room->token, $room));
         $this->assertFalse(RoomsRepository::verify($other, $room->token, $room));
+
+        RoomsRepository::joined($host, $room);
+        Event::assertDispatched(Join::class, fn ($e) => $e->room == $room && $e->user === $host);
+
+        RoomsRepository::joined($guest, $room);
+        Event::assertDispatched(Join::class, fn ($e) => $e->room == $room && $e->user === $guest);
+
+        RoomsRepository::joined($other, $room);
+        Event::assertDispatched(Join::class, fn ($e) => $e->room == $room && $e->user === $other);
+
+        RoomsRepository::leaves($host, $room);
+        Event::assertDispatched(Leave::class, fn ($e) => $e->room == $room && $e->user === $host);
+
+        RoomsRepository::leaves($guest, $room);
+        Event::assertDispatched(Leave::class, fn ($e) => $e->room == $room && $e->user === $guest);
+
+        RoomsRepository::leaves($other, $room);
+        Event::assertDispatched(Leave::class, fn ($e) => $e->room == $room && $e->user === $other);
     }
 }
