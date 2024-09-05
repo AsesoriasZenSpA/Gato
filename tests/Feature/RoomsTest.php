@@ -17,6 +17,7 @@ class RoomsTest extends TestCase
     public function test_flow(): void
     {
         Mail::fake();
+
         $host = User::factory()->create();
         $guest = User::factory()->create();
         $other = User::factory()->create();
@@ -33,7 +34,6 @@ class RoomsTest extends TestCase
             'id' => $room->id,
             'guest_id' => $guest->id,
         ]);
-
         Mail::assertSent(Invite::class);
 
         $this->assertTrue(RoomsRepository::verify($guest, $room->token, $room));
