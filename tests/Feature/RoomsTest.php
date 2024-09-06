@@ -2,11 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Events\Rooms\GameFinished;
+use App\Events\Rooms\GameUpdated;
 use App\Events\Rooms\Join;
 use App\Events\Rooms\Leave;
 use App\Mail\Rooms\Invite;
+use App\Models\Game;
 use App\Models\Room;
 use App\Models\User;
+use App\Repositories\GamesRepository;
 use App\Repositories\RoomsRepository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
@@ -60,5 +64,78 @@ class RoomsTest extends TestCase
 
         RoomsRepository::leaves($other, $room);
         Event::assertDispatched(Leave::class, fn ($e) => $e->room == $room && $e->user === $other);
+
+        $game = GamesRepository::create($room);
+        $this->assertDatabaseHas(Game::class, [
+            'id' => $game->id,
+            'room_id' => $room->id,
+            'board' => '         ',
+        ]);
+
+        $initializer = $game->initializer_id == $host->id ? $host : $guest;
+        $not_initializer = $game->initializer_id == $host->id ? $guest : $host;
+
+        $this->assertTrue(GamesRepository::play(0, $initializer, $room, $game));
+        Event::assertDispatched(GameUpdated::class, fn ($e) => $e->room == $room && $e->user === $initializer && $e->game === $game && $e->position === 0);
+        $this->assertDatabaseHas(Game::class, [
+            'id' => $game->id,
+            'room_id' => $room->id,
+            'board' => 'A        ',
+        ]);
+
+        $this->assertFalse(GamesRepository::play(0, $initializer, $room, $game));
+        $this->assertFalse(GamesRepository::play(0, $other, $room, $game));
+        Event::assertNotDispatched(GameUpdated::class, fn ($e) => $e->room == $room && $e->user === $other && $e->game === $game && $e->position === 0);
+        $this->assertFalse(GamesRepository::gotWinner($game));
+
+        $this->assertTrue(GamesRepository::play(1, $not_initializer, $room, $game));
+        $this->assertFalse(GamesRepository::gotWinner($game));
+        $this->assertDatabaseHas(Game::class, [
+            'id' => $game->id,
+            'room_id' => $room->id,
+            'board' => 'AB       ',
+        ]);
+
+        $this->assertFalse(GamesRepository::play(2, $not_initializer, $room, $game));
+        $this->assertFalse(GamesRepository::gotWinner($game));
+        $this->assertDatabaseHas(Game::class, [
+            'id' => $game->id,
+            'room_id' => $room->id,
+            'board' => 'AB       ',
+        ]);
+
+        $this->assertTrue(GamesRepository::play(4, $initializer, $room, $game));
+        $this->assertFalse(GamesRepository::gotWinner($game));
+        $this->assertDatabaseHas(Game::class, [
+            'id' => $game->id,
+            'room_id' => $room->id,
+            'board' => 'AB  A    ',
+        ]);
+
+        $this->assertTrue(GamesRepository::play(3, $not_initializer, $room, $game));
+        $this->assertFalse(GamesRepository::gotWinner($game));
+        $this->assertDatabaseHas(Game::class, [
+            'id' => $game->id,
+            'room_id' => $room->id,
+            'board' => 'AB BA    ',
+        ]);
+
+        $this->assertTrue(GamesRepository::play(8, $initializer, $room, $game));
+        Event::assertDispatched(GameFinished::class, fn ($e) => $e->room == $room && $e->user === $initializer && $e->game === $game && $e->position === 8);
+        Event::assertNotDispatched(GameUpdated::class, fn ($e) => $e->room == $room && $e->user === $initializer && $e->game === $game && $e->position === 8);
+        $this->assertEquals('A', GamesRepository::gotWinner($game));
+        $this->assertDatabaseHas(Game::class, [
+            'id' => $game->id,
+            'room_id' => $room->id,
+            'board' => 'AB BA   A',
+        ]);
+
+        $this->assertFalse(GamesRepository::play(5, $not_initializer, $room, $game));
+        $this->assertEquals('A', GamesRepository::gotWinner($game));
+        $this->assertDatabaseHas(Game::class, [
+            'id' => $game->id,
+            'room_id' => $room->id,
+            'board' => 'AB BA   A',
+        ]);
     }
 }
