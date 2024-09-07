@@ -15,4 +15,9 @@ class Room extends Model
         'token',
         'uuid',
     ];
+
+    public function games()
+    {
+        return $this->hasMany(Game::class);
+    }
 }
