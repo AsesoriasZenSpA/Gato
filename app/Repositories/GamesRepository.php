@@ -39,13 +39,14 @@ class GamesRepository
         $available_plays = substr_count($board, ' ', 0);
         $should_play_initializer = $available_plays % 2 == 1;
 
-        if ($should_play_initializer && $user->id !== $game->initializer_id) {
+        if ($should_play_initializer && $user->id !== $game->initializer_id)
             return false;
-        }
 
-        if ($board[$position] !== ' ') {
+        if(!$should_play_initializer && $user->id === $game->initializer_id)
             return false;
-        }
+
+        if ($board[$position] !== ' ')
+            return false;
 
         $board[$position] = $should_play_initializer ? 'A' : 'B';
 
@@ -53,11 +54,11 @@ class GamesRepository
             'board' => $board,
         ]);
 
-        if (static::gotWinner($game)) {
+        if (static::gotWinner($game))
             broadcast(new GameFinished($room, $game, $user, $position));
-        } else {
+        else
             broadcast(new GameUpdated($room, $game, $user, $position));
-        }
+
 
         return true;
     }
