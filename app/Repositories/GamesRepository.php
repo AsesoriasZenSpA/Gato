@@ -43,6 +43,10 @@ class GamesRepository
             return false;
         }
 
+        if (! $should_play_initializer && $user->id === $game->initializer_id) {
+            return false;
+        }
+
         if ($board[$position] !== ' ') {
             return false;
         }

@@ -76,6 +76,7 @@ class RoomsTest extends TestCase
         $not_initializer = $game->initializer_id == $host->id ? $guest : $host;
 
         $this->assertTrue(GamesRepository::play(0, $initializer, $room, $game));
+        $this->assertFalse(GamesRepository::play(1, $initializer, $room, $game));
         Event::assertDispatched(GameUpdated::class, fn ($e) => $e->room == $room && $e->user === $initializer && $e->game === $game && $e->position === 0);
         $this->assertDatabaseHas(Game::class, [
             'id' => $game->id,
