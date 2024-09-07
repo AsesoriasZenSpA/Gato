@@ -14,4 +14,16 @@ class Game extends Model
         'board',
         'initializer_id',
     ];
+
+    public function getStructureAttribute()
+    {
+        $rows = str_split($this->board);
+
+        return [
+            array_slice($rows, 0, 3),
+            array_slice($rows, 3, 3),
+            array_slice($rows, 6, 3),
+        ];
+
+    }
 }
